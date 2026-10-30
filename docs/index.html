@@ -163,7 +163,6 @@ body.playing-mobile #musicBtn{display:flex;align-items:center;justify-content:ce
 <b>&nbsp;&nbsp;Ataques:</b> <kbd>W</kbd>+<kbd>F</kbd> hacia arriba · <kbd>S</kbd>+<kbd>F</kbd> hacia abajo · <kbd>F</kbd> horizontal<br>
 <span id="helpP2"><b>Jugador 2:</b> <kbd>←</kbd><kbd>→</kbd> moverse · <kbd>↑</kbd> saltar · <kbd>↓</kbd> escudo · <kbd>L</kbd> golpear · <kbd>K</kbd> mega ataque<br>
 <b>&nbsp;&nbsp;Ataques:</b> <kbd>↑</kbd>+<kbd>L</kbd> hacia arriba · <kbd>↓</kbd>+<kbd>L</kbd> hacia abajo · <kbd>L</kbd> horizontal<br></span>
-<b>¡Choque de rayos!</b> Si el mega ataque golpea al rival de frente, espamea tu botón de mega ataque más rápido que él.<br>
 <b>Escudo:</b> se rompe con el tiempo y los ataques. Se regenera al no usarlo.<br>
 <b>Doble salto:</b> pulsa saltar dos veces · En el mapa Isla el agua hace daño.
 </div>
@@ -218,7 +217,6 @@ function sfxBeam(){ playSfx(80,0.15,'sawtooth',0.08); }
 function sfxBlock(){ playSfx(500,0.06,'triangle',0.05); }
 function sfxShieldBreak(){ playSfx(160,0.3,'sawtooth',0.12); playSfx(80,0.4,'square',0.1); playSfx(50,0.5,'triangle',0.08); }
 function sfxWin(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>playSfx(f,0.18,'square',0.08),i*110)); }
-function sfxClash(){ playSfx(700,0.1,'square',0.07); playSfx(500,0.1,'square',0.06); }
 const bassNotes=[131,131,165,165,196,196,165,165];
 const leadNotes=[523,0,659,784,0,659,523,0,587,0,659,523,0,440,523,0];
 function tickMusic(){
@@ -507,7 +505,6 @@ function drawFighter(f){
   if(f.attack>0 && aDir===0){pixel(x+(f.face===1?47:-22),y+28,25,8,'#f8fafc');pixel(x+(f.face===1?65:-28),y+24,7,16,'#38bdf8')}
   if(f.special>0){pixel(x+(f.face===1?45:-65),y+12,40,30,'#0ea5e9');pixel(x+(f.face===1?51:-59),y+17,27,20,'#fff');pixel(x+(f.face===1?59:-51),y+21,13,12,'#bae6fd')}
  }
- // visual de ataque vertical
  if(f.attack>0 && aDir===-1){
    ctx.save();ctx.globalAlpha=.9;
    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x+26,y-10,15,0,Math.PI*2);ctx.fill();
@@ -783,33 +780,14 @@ function drawBolt(){
  ctx.restore();
 }
 
-let clash=null;
 function specialAttack(i){
  const a=fighters[i];
- if(!running||a.cool>0||clash||bolt)return;
+ if(!running||a.cool>0||bolt)return;
  if(a.power<100){document.getElementById('msg').textContent='¡Llena la barra de poder para activar el MEGA ATAQUE!';return}
  a.power=0;a.cool=110;a.attack=30;a.special=16;updateHud();
  bolt={owner:i,x:a.x+a.w/2+a.face*24,y:a.y+22,dir:a.face,speed:22};
  sfxMega();
  document.getElementById('msg').textContent='¡¡'+megaNames[a.type]+' de '+colors[a.type].name+'!!';
-}
-
-function resolveClash(){
- const a=fighters[clash.ai],b=fighters[clash.bi];
- if(clash.mashA>clash.mashB){
-  b.hp=Math.max(0,b.hp-5);b.vx=a.face*16;b.vy=-9;shake=20;
-  document.getElementById('msg').textContent='¡'+colors[a.type].name+' GANA EL CHOQUE Y GOLPEA FUERTE!';
- }else if(clash.mashB>clash.mashA){
-  a.hp=Math.max(0,a.hp-3);a.vx=-a.face*14;a.vy=-7;shake=14;
-  document.getElementById('msg').textContent='¡'+colors[b.type].name+' RESISTIÓ Y CONTRAATACA!';
- }else{
-  a.hp=Math.max(0,a.hp-1);b.hp=Math.max(0,b.hp-1);shake=10;
-  document.getElementById('msg').textContent='¡EMPATE EN EL CHOQUE DE RAYOS!';
- }
- updateHud();
- if(a.hp===0)endGame(clash.bi);
- if(b.hp===0)endGame(clash.ai);
- clash=null;
 }
 
 /* ================== FONDOS TEMÁTICOS ================== */
@@ -941,28 +919,12 @@ function draw(){
  foods.forEach(drawFood);
  if(running){fighters.forEach(drawFighter);drawBolt()}
  else if(document.getElementById('select').classList.contains('hidden'))fighters.forEach(drawFighter);
- if(clash){
-  const total=clash.mashA+clash.mashB||1,midx=480,w=240,left=w*clash.mashA/total,tRatio=Math.max(0,clash.timer/150);
-  ctx.fillStyle='rgba(17,24,39,.78)';ctx.fillRect(midx-w/2-4,26,w+8,50);
-  ctx.fillStyle='rgba(239,68,68,.35)';ctx.fillRect(midx-w/2,32,w,6);
-  ctx.fillStyle='#ef4444';ctx.fillRect(midx-w/2,32,w*tRatio,6);
-  ctx.fillStyle='#38bdf8';ctx.fillRect(midx-w/2,52,left,14);
-  ctx.fillStyle='#ef4444';ctx.fillRect(midx-w/2+left,52,w-left,14);
-  ctx.strokeStyle='#fde047';ctx.lineWidth=2;ctx.strokeRect(midx-w/2,52,w,14);
-  ctx.fillStyle='#fde047';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText('¡CHOQUE DE RAYOS! '+Math.ceil(clash.timer/60)+'s',midx,46);
- }
  ctx.restore()
 }
 
 function botThink(){
   for(const k in botKeys)delete botKeys[k];
   if(!running||mode!=='bot')return;
-  if(clash){
-    if(Math.random()<0.075){
-      if(clash.ai===1)clash.mashA++; else if(clash.bi===1)clash.mashB++;
-    }
-    return;
-  }
   const me=fighters[1],foe=fighters[0];
   const cx=me.x+me.w/2,fx=foe.x+foe.w/2;
   const dx=fx-cx,dist=Math.abs(dx),dir=dx>=0?1:-1;
@@ -974,7 +936,7 @@ function botThink(){
   me.face=dir;
   if(bolt&&bolt.owner===0){
     const coming=bolt.dir>0?bolt.x<cx:bolt.x>cx;
-    if(coming&&Math.abs(bolt.x-cx)<380&&me.power<100&&me.shieldHP>20&&bot.shieldCd<=0){
+    if(coming&&Math.abs(bolt.x-cx)<380&&me.shieldHP>20&&bot.shieldCd<=0){
       if(bot.shieldT<=0&&Math.random()<0.16)bot.shieldT=38;
     }
   }
@@ -1005,10 +967,7 @@ function step(){
  frame++;
  if(running){
   if(mode==='bot')botThink();
-  if(clash){
-   fighters.forEach(f=>{if(f.special>0)f.special--});
-   clash.timer--;if(clash.timer<=0)resolveClash();
-  }else{
+  {
    fighters.forEach((f,i)=>{
     const K=(mode==='bot'&&i===1)?botKeys:keys;
     let left=i===0?'a':'ArrowLeft',right=i===0?'d':'ArrowRight',jump=i===0?'w':'ArrowUp',shieldKey=i===0?'s':'ArrowDown';
@@ -1044,7 +1003,6 @@ function step(){
    foods.forEach(item=>{if(item.wait>0)item.wait--});
    foodTimer++;if(foodTimer>900){foodTimer=0;let empty=foods.find(item=>item.wait>0);if(empty){empty.x=180+Math.random()*600;empty.wait=0;empty.kind=Math.random()<.5?'apple':'bread'}}
 
-   // Ataques con dirección vertical
    if(keys.f){
      keys.f=false;
      let dir=0;
@@ -1081,11 +1039,6 @@ function step(){
         document.getElementById('msg').textContent='¡'+colors[def.type].name+' BLOQUEÓ '+megaNames[atk.type]+'! Escudo: '+Math.round(def.shieldHP)+'%';
       }
       updateHud();
-     }else if(def.power>=100){
-      def.power=0;updateHud();
-      clash={ai:bolt.owner,bi:1-bolt.owner,timer:150,mashA:0,mashB:0};
-      sfxClash();
-      document.getElementById('msg').textContent='¡¡CHOQUE DE PODERES!! ¡Pulsa tu botón de mega ataque sin parar!';
      }else{
       def.hp=Math.max(0,def.hp-4);def.vx=atk.face*14;def.vy=-8;shake=16;updateHud();sfxBeam();
       document.getElementById('msg').textContent='¡¡'+megaNames[atk.type]+' DIRECTO de '+colors[atk.type].name+'!!';
@@ -1115,10 +1068,6 @@ window.addEventListener('keydown',e=>{
       if(k==='8'){emote(1,'🔥');return}
       if(k==='9'){emote(1,'😤');return}
     }
-  }
-  if(clash&&!e.repeat){
-    if(k==='g'){ if(clash.ai===0)clash.mashA++; else if(clash.bi===0)clash.mashB++; }
-    if(mode!=='bot'&&k==='k'){ if(clash.ai===1)clash.mashA++; else if(clash.bi===1)clash.mashB++; }
   }
   keys[k]=true;
   keysHeld[k]=true;
